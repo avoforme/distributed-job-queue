@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/rpc"
 	"os"
+	"cs4513/project1/types"
 )
 
 func main() {
@@ -49,6 +50,15 @@ func cmdSubmit(client *rpc.Client, args []string) {
 		os.Exit(1)
 	}
 	// TODO: implement
+	jobInput := types.JobSpec{Type: args[0], Payload: []byte(args[1])}
+
+	var reply types.JobID
+	err:= client.Call("Coordinator.SubmitJob", jobInput, &reply)
+	if err != nil {
+		log.Fatalf("Fail to submit job")
+	}
+
+	fmt.Printf("Submitted %s", reply)
 }
 
 // cmdQuery prints the current state of one job.
