@@ -68,6 +68,26 @@ func cmdQuery(client *rpc.Client, args []string) {
 		os.Exit(1)
 	}
 	// TODO: implement
+	jobInput := types.JobID(args[0])
+
+	var reply types.JobStatus
+	err:= client.Call("Coordinator.QueryJob", jobInput, &reply)
+	if err != nil {
+		log.Fatalf("Fail to query job %s", args[0])
+	}
+
+	if reply.WorkerID != "" {
+    // string is not empty
+		fmt.Printf("%-10s %-10s (%s)\n", reply.ID, reply.State.String(), reply.WorkerID)
+	} else {
+		fmt.Printf("%-10s %s\n", reply.ID, reply.State.String())
+	}
+
+	if reply.State == types.StateDone {
+		fmt.Print(string(reply.Output))
+	} else if reply.State == types.StateFailed {
+		fmt.Print(reply.Err)
+	}
 }
 
 // cmdList prints all jobs known to the coordinator.
