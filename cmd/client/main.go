@@ -83,9 +83,10 @@ func cmdQuery(client *rpc.Client, args []string) {
 		fmt.Printf("%-10s %s\n", reply.ID, reply.State.String())
 	}
 
-	if reply.State == types.StateDone {
+	switch reply.State {
+	case types.StateDone:
 		fmt.Print(string(reply.Output))
-	} else if reply.State == types.StateFailed {
+	case types.StateFailed:
 		fmt.Print(reply.Err)
 	}
 }
@@ -93,4 +94,15 @@ func cmdQuery(client *rpc.Client, args []string) {
 // cmdList prints all jobs known to the coordinator.
 func cmdList(client *rpc.Client) {
 	// TODO: implement
+	type emptyInput struct{}
+
+	var reply []types.JobSummary
+	err := client.Call("Coordinator.ListJobs", &emptyInput{}, &reply)
+	if err != nil {
+		log.Fatalf("Fail to return jobs")
+	}
+
+	for _, job := range reply {
+		fmt.Printf("%-10s %-10s %s\n", job.ID, job.Type, job.State.String()) 
+	}
 }
