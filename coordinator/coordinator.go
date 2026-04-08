@@ -5,7 +5,6 @@ package coordinator
 import (
 	"cs4513/project1/types"
 	"fmt"
-	"log"
 	"net"
 	"net/rpc"
 	"sync"
@@ -27,7 +26,7 @@ type Coordinator struct {
 	mu sync.Mutex
 	jobs map[types.JobID] *jobRecord
 	queue []types.JobID
-	workers map[types.JobID] time.Time
+	workers map[types.WorkerID] time.Time
 	nextJobID int64
 	nextWorkerID int64
 }
@@ -37,7 +36,7 @@ func New() *Coordinator {
 	// TODO: implement
 	return &Coordinator{
 		jobs: make(map[types.JobID]*jobRecord),
-		workers: make(map[types.JobID]time.Time),
+		workers: make(map[types.WorkerID]time.Time),
 		queue: []types.JobID{},
 		nextJobID: 0,
 		nextWorkerID: 0,
@@ -54,25 +53,23 @@ func Start(addr string) error {
 
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("Fail to submit job")
-		return err
+		return fmt.Errorf("Fail to listen")
 	}
 
 	for {
 		conn, err:= ln.Accept()
 		if err != nil {
-			log.Fatalf("Fail to submit job")
-			return err
+			return fmt.Errorf("Fail to accept connection")
 		}
 		go srv.ServeConn(conn)
 	}
-	return nil
 }
 
 // SubmitJob adds a new job and returns its ID.
 func (c *Coordinator) SubmitJob(spec types.JobSpec, reply *types.JobID) error {
 	// TODO: implement
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	newJobID := types.JobID(fmt.Sprintf("job-%d", atomic.AddInt64(&c.nextJobID, 1)))
 	newJob := types.Job{
 		ID: newJobID,
@@ -92,25 +89,27 @@ func (c *Coordinator) SubmitJob(spec types.JobSpec, reply *types.JobID) error {
 	c.queue = append(c.queue, newJobID)
 
 	*reply = newJobID
-	c.mu.Unlock()
 	return nil
 }
 
 // QueryJob returns the current status of a job.
 func (c *Coordinator) QueryJob(id types.JobID, reply *types.JobStatus) error {
 	// TODO: implement
-	jobRecord, err := c.jobs[id]
-	*reply = jobRecord.jobStatus
-
-	if !err {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	jobRecord, ok := c.jobs[id]
+	if !ok {
 		return fmt.Errorf("No job with this ID")
 	}
+	*reply = jobRecord.jobStatus
 	return nil
 }
 
 // ListJobs returns a summary of every known job.
 func (c *Coordinator) ListJobs(_ struct{}, reply *[]types.JobSummary) error {
 	// TODO: implement
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for jobID, jobRecord := range c.jobs {
 		jobSummary := types.JobSummary{
 			ID: jobID,
@@ -120,23 +119,67 @@ func (c *Coordinator) ListJobs(_ struct{}, reply *[]types.JobSummary) error {
 
 		*reply = append(*reply, jobSummary)
 	}
+
 	return nil
 }
 
 // Register assigns a WorkerID to a new worker.
 func (c *Coordinator) Register(_ types.WorkerInfo, reply *types.WorkerID) error {
 	// TODO: implement
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	newWorkerID := types.WorkerID(fmt.Sprintf("worker-%d", atomic.AddInt64(&c.nextWorkerID, 1)))
+	c.workers[newWorkerID] = time.Time{}
+	*reply = newWorkerID
+
 	return nil
 }
 
 // RequestJob hands out the next pending job.
 func (c *Coordinator) RequestJob(workerID types.WorkerID, reply *types.Job) error {
 	// TODO: implement
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_, ok :=  c.workers[workerID]
+	if !ok {
+		return fmt.Errorf("Worker not registered")
+	}
+
+	if len(c.queue) == 0 {                
+   		return types.ErrNoWork
+	}
+	
+	job := c.jobs[c.queue[0]]
+	c.queue = c.queue[1:]
+
+	job.jobStatus.State = types.StateRunning
+	job.jobStatus.WorkerID = workerID
+	
+	*reply = job.job
 	return nil
 }
 
+// JobID    JobID
+// WorkerID WorkerID
+// Output   []byte
+// Err      string
 // ReportResult stores the result of a finished job.
 func (c *Coordinator) ReportResult(result types.JobResult, _ *struct{}) error {
 	// TODO: implement
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	job, ok :=  c.jobs[result.JobID]
+	if !ok {
+		return fmt.Errorf("No job found")
+	}
+
+	if (result.Err == "") {
+		job.jobStatus.State = types.StateDone
+		job.jobStatus.Output = result.Output
+
+	} else {
+		job.jobStatus.State = types.StateFailed
+		job.jobStatus.Err = result.Err
+	}
 	return nil
 }
