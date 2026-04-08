@@ -80,6 +80,7 @@ func cmdQuery(client *rpc.Client, args []string) {
     // string is not empty
 		fmt.Printf("%-10s %-10s (%s)\n", reply.ID, reply.State.String(), reply.WorkerID)
 	} else {
+	// strinf is empty
 		fmt.Printf("%-10s %s\n", reply.ID, reply.State.String())
 	}
 
