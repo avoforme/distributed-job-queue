@@ -16,6 +16,7 @@ With timeout reaping, what happens instead?
 What risk do you create if the timeout is too short?
 
 *Your answer here.*
+The job is stuck in running. Without reaping, the job will be stuck in running state forever, and the output will never get returned to the coordinator. With timeout reaping, the coordinator eventually returns the job to pending after some defined time, and the job will be assigned/run again. But if the timeout is too short, another worker will be assigned that job again, and two workers end up running the same job, creating duplicates.
 
 ---
 
@@ -25,3 +26,9 @@ Show one place in your code where you return an error using
 `fmt.Errorf("...: %w", err)`. Explain what extra debugging value the wrapping adds.
 
 *Your answer here.*
+One place this can be used in my code is in the Start function when setting up the listener: 
+`ln, err := net.Listen("tcp", addr)
+if err != nil {
+	return fmt.Errorf("failed to start coordinator listener: %w", err)
+}`
+Using fmt.Errorf("...: %w", err) wraps the original error with additional context. The original error (err) is preserved, so it can still be inspected later. The added message ("Failed to start coordinator listener") gives higher-level context about where and why the error occurred.

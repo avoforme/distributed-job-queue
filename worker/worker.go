@@ -24,7 +24,7 @@ func Run(addr string) error {
 	var reply types.WorkerID
 	err = client.Call("Coordinator.Register", types.WorkerInfo{}, &reply)
 	if err != nil {
-		return fmt.Errorf("Fail to register worker")
+		return fmt.Errorf("Fail to register worker: %w", err)
 	}
 	workerID := reply
 
@@ -35,7 +35,7 @@ func Run(addr string) error {
 			if types.IsNoWork(err) {
     			time.Sleep(1 * time.Second)
 				continue
-			} else { return fmt.Errorf("Worker not registerd") }
+			} else { return fmt.Errorf("Worker not registerd: %w", err) }
 		}
 
 		result := jobs.ExecuteJob(newJob)
@@ -46,10 +46,9 @@ func Run(addr string) error {
 		
 		err = client.Call("Coordinator.ReportResult", result, &struct{}{})
 		if err != nil {
-			return fmt.Errorf("Job not found")
+			return fmt.Errorf("Job not found: %w", err)
 		}
 
 	}
 
-	return nil
 }

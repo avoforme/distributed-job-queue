@@ -53,13 +53,13 @@ func Start(addr string) error {
 
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return fmt.Errorf("Fail to listen")
+		return fmt.Errorf("Failed to start coordinator listener: %w", err)
 	}
 
 	for {
 		conn, err:= ln.Accept()
 		if err != nil {
-			return fmt.Errorf("Fail to accept connection")
+			return fmt.Errorf("Fail to accept connection: %w", err)
 		}
 		go srv.ServeConn(conn)
 	}
