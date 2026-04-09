@@ -35,13 +35,13 @@ func Run(addr string) error {
 			if types.IsNoWork(err) {
     			time.Sleep(1 * time.Second)
 				continue
-			} else { return fmt.Errorf("Worker not registerd: %w", err) }
+			} else { return fmt.Errorf("Request job failed: %w", err) }
 		}
 
 		result := jobs.ExecuteJob(newJob)
 		result.WorkerID = workerID
 		if result.Err != "" {
-			print(result.Err)
+			fmt.Println("Job error:", result.Err)
 		}
 		
 		err = client.Call("Coordinator.ReportResult", result, &struct{}{})

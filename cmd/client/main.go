@@ -55,10 +55,10 @@ func cmdSubmit(client *rpc.Client, args []string) {
 	var reply types.JobID
 	err:= client.Call("Coordinator.SubmitJob", jobInput, &reply)
 	if err != nil {
-		log.Fatalf("Fail to submit job")
+		log.Fatalf("Fail to submit job: %v", err)
 	}
 
-	fmt.Printf("Submitted %s", reply)
+	fmt.Printf("Submitted %s\n", reply)
 }
 
 // cmdQuery prints the current state of one job.
@@ -73,11 +73,12 @@ func cmdQuery(client *rpc.Client, args []string) {
 	var reply types.JobStatus
 	err:= client.Call("Coordinator.QueryJob", jobInput, &reply)
 	if err != nil {
-		log.Fatalf("Fail to query job %s", args[0])
+		log.Fatalf("Fail to query job %s: %v", args[0], err)
 	}
 
 	if reply.WorkerID != "" {
     // string is not empty
+
 		fmt.Printf("%-10s %-10s (%s)\n", reply.ID, reply.State.String(), reply.WorkerID)
 	} else {
 	// strinf is empty
@@ -100,7 +101,7 @@ func cmdList(client *rpc.Client) {
 	var reply []types.JobSummary
 	err := client.Call("Coordinator.ListJobs", &emptyInput{}, &reply)
 	if err != nil {
-		log.Fatalf("Fail to return jobs")
+		log.Fatalf("Fail to return jobs: %v", err)
 	}
 
 	for _, job := range reply {
